@@ -1,6 +1,11 @@
 import pandas as pd
 from time import time
 from pyarrow.feather import write_feather, read_feather
+import os
+import tempfile
+from timeit import timeit
+import psutil
+
 
 def dump(df, file_name, mode=None):
     if mode == 'HD5':
@@ -32,30 +37,34 @@ def make_df(rows=10**6):
                        'strings': ['a']*rows})
     return df
 
-def timeit(func, n=5):
-    start = time()
-    for i in range(n):
-        func()
-    end = time()
-    return (end - start) / n
+
 # had to install pytables for hd5 fies
-MODES = ['parquet', 'msgpack', 'HD5', 'pickle.gzip', 'feather'] #['parquet', 'msgpack', ]
+MODES = ['parquet', 'msgpack', 'HD5', 'pickle.gzip', 'feather']
 ROWS = [10**5, 10**7]
 
-timing_df = pd.DataFrame(columns=['rows', 'mode', 'action', 'time'])
+perf_df = pd.DataFrame(columns=['rows', 'mode', 'action', 'time'])
+size_df = pd.DataFrame(columns=['rows', 'mode', 'size'])
 
 for n_rows in ROWS:
     df = make_df(rows=n_rows)
     for mode in MODES:
-        file_name = "temp_df.{}".format(mode)
-        print("hi")
-        dump_time = timeit(lambda: dump(df, file_name, mode=mode))
-        timing_df = timing_df.append({'rows': n_rows, 'mode': mode, 'action': 'dumps', 'time': dump_time}, ignore_index=True)
-        load_time = timeit(lambda: load(file_name, mode=mode))
-        timing_df = timing_df.append({'rows': n_rows, 'mode': mode, 'action': 'loads', 'time': load_time}, ignore_index=True)
+        with tempfile.NamedTemporaryFile() as f:
+            dump_time = timeit(lambda: dump(df, f.name, mode=mode), number=3)
+            #get cpu percent util since last call
+            perf_df = perf_df.append({'rows': n_rows, 'mode': mode, 'action': 'dumps',
+                                          'time': dump_time},
+                                         ignore_index=True)
+            size = os.path.getsize(f.name)
+            size_df = size_df.append({'rows': n_rows, 'mode': mode, 'size': size},
+                                     ignore_index=True)
+            load_time = timeit(lambda: load(f.name, mode=mode), number=3)
+            perf_df = perf_df.append({'rows': n_rows, 'mode': mode, 'action': 'loads',
+                                          'time': load_time},
+                                         ignore_index=True)
 
 
-timing_df.to_csv("timing_serde.csv")
+perf_df.to_csv('data/performance.csv', index=False)
+size_df.to_csv('data/timing.csv', index=False)
 
 
 
