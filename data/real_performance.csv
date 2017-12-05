@@ -1,0 +1,7 @@
+file_name,mode,load_time,cpu_percent,size
+file_w_12cols_3Mrows,parquet,3.14999008179,13.6,16663297
+file_w_12cols_3Mrows,msgpack,3.16382980347,14.3,290980635
+file_w_12cols_3Mrows,HD5,11.2542669773,18.6,545296720
+file_w_12cols_3Mrows,feather,2.10190105438,13.1,365702744
+file_w_12cols_3Mrows,pickle.gzip,324.434662104,18.0,55683418
+
